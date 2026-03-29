@@ -10,7 +10,7 @@ if([DataCorePlugin.CurrentGame]='ATS' or [DataCorePlugin.CurrentGame]='ETS2', if
 
 if([DataCorePlugin.CurrentGame]='ATS' or [DataCorePlugin.CurrentGame]='ETS2', if([DataCorePlugin.GameRawData.TruckValues.CurrentValues.DifferentialLock], '1', '0'), if(isnull([DataCorePlugin.GameData.ABSEnabled], 1) = 0, '1', '0')) + ',' + 
 
-if([DataCorePlugin.CurrentGame]='ATS' or [DataCorePlugin.CurrentGame]='ETS2', if([GameRawData.TruckValues.CurrentValues.MotorValues.BrakeValues.MotorBrake]=true, '1', '0'), if(isnull([DataCorePlugin.GameData.TCEnabled], 1) = 0, '1', '0')) + ',' + 
+if([DataCorePlugin.CurrentGame]='ATS' or [DataCorePlugin.CurrentGame]='ETS2', '0', if(isnull([DataCorePlugin.GameData.TCEnabled], 1) = 0, '1', '0')) + ',' + 
 
 if(isincreasing(4000, [EngineIgnitionOn]), '1', '0') + ',' + 
 
@@ -24,6 +24,6 @@ if([DataCorePlugin.CurrentGame]='ATS' or [DataCorePlugin.CurrentGame]='ETS2', if
 
 if([DataCorePlugin.CurrentGame]='ATS' or [DataCorePlugin.CurrentGame]='ETS2', if(isnull([GameRawData.TruckValues.CurrentValues.LightsValues.BeamLow],false)=true,'1','0'), if([DataCorePlugin.CurrentGame]='AssettoCorsa', if(isnull([UDPConnectorDataPlugin.HeadlightsActive],false)=true,'1','0'), '0')) + ',' + 
 
-if([DataCorePlugin.CurrentGame]='BeamNgDrive', if(replace(isnull([GameRawData.ShowLights], ''), 'DL_HANDBRAKE', '') != isnull([GameRawData.ShowLights], ''), '1', '0'), if([DataCorePlugin.GameData.Handbrake]=true, '1', '0')) + ',' + 
+if([DataCorePlugin.CurrentGame]='ATS' or [DataCorePlugin.CurrentGame]='ETS2', if([GameRawData.TruckValues.CurrentValues.MotorValues.BrakeValues.MotorBrake]=true, '1', '0'), '0') + ',' + 
 
-format([Gear], '0') + ',' + format([DataCorePlugin.Computed.Fuel_Percent],'0') + ',' + format([DataCorePlugin.CurrentDateTime], 'hh') + ',' + format([DataCorePlugin.CurrentDateTime], 'mm') + ',' + ('1') + ',' + format([WaterTemperature],'0') + ',' + format([SpeedMph],'0') + ',' + format([Rpms],'0') + ',' + format([OilTemperature],'0')
+format([Gear], '0') + ',' + format([DataCorePlugin.Computed.Fuel_Percent],'0') + ',' + format([DataCorePlugin.CurrentDateTime], 'HH') + ',' + format([DataCorePlugin.CurrentDateTime], 'mm') + ',' + ('1') + ',' + format([WaterTemperature],'0') + ',' + format([SpeedMph],'0') + ',' + format([Rpms],'0') + ',' + format([OilTemperature],'0')
