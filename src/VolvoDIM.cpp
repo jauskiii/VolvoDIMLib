@@ -10,16 +10,32 @@ Reworked by Mikael R, March 29, 2026.
 
 mcp2515_can CAN(0);
 int _relayPin = 0;
-VolvoDIM::VolvoDIM(int SPI_CS_PIN, int relayPin)
+int _parkingBrakePin = 0;
+int _engineLightPin = 0;
+VolvoDIM::VolvoDIM(int SPI_CS_PIN, int relayPin, int parkingBrakePin, int engineLightPin)
 {
 	mcp2515_can temp_CAN(SPI_CS_PIN);
 	CAN = temp_CAN;
 	_relayPin = relayPin;
+
+
+	  // Initialize parking brake relay control pin (digital pin 7)
+   _parkingBrakePin = parkingBrakePin;
+  pinMode(_parkingBrakePin, OUTPUT);
+  // Set default state: relay off (assuming active low for parking brake)
+  digitalWrite(_parkingBrakePin, HIGH);
+
+
+
+  _engineLightPin = engineLightPin;
+  pinMode(_engineLightPin, OUTPUT);
+  // Set default state: relay off (assuming active low for parking brake)
+  digitalWrite(_engineLightPin, HIGH);
 }
 bool enableSerialErrMsg = false;
 int genCnt = 0;
 int cnt = 0;
-constexpr int listLen = 14;
+constexpr int listLen = 13;
 char* customTextMessage = "";
 int startUpWait = 0;
 int customMessageCnt = 0, customTextChanged = 0;
@@ -30,8 +46,8 @@ int configCnt = 0;
 int blinkerInterval = 0;
 unsigned char stmp[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 unsigned long address;
-constexpr int arrSpeed = 0, arrRpm = 1, arrCoolant = 2, arrTime = 3, arrBrakes = 4, arrBlinker = 5, arrAntiSkid = 6, arrAirbag = 7, arr4c = 8, arrConfig = 9, arrGear = 10, arrTrailer = 11, arrDmWindow = 12, arrDmMessage = 13;
-constexpr unsigned long addrLi[listLen] = {0x217FFC, 0x2803008, 0x3C01428, 0x381526C, 0x3600008, 0xA10408, 0x2006428, 0x1A0600A, 0x2616CFC, 0x1017FFC, 0x3200408, 0x3E0004A, 0x02A0240E, 0x1800008};
+constexpr int arrSpeed = 0, arrRpm = 1, arrCoolant = 2, arrTime = 3, arrBrakes = 4, arrBlinker = 5, arrAntiSkid = 6, arrAirbag = 7, arr4c = 8, arrConfig = 9, arrGear = 10, arrDmWindow = 11, arrDmMessage = 12;
+constexpr unsigned long addrLi[listLen] = {0x217FFC, 0x2803008, 0x3C01428, 0x381526C, 0x3600008, 0xA10408, 0x2006428, 0x1A0600A, 0x2616CFC, 0x1017FFC, 0x3200408, 0x02A0240E, 0x1800008};
 /*
    addrLi[0] = Speed/KeepAlive
    addrLi[1] = RPM/Backlights
@@ -61,15 +77,19 @@ unsigned char defaultData[listLen][8] = {
 	{0x0B, 0x42, 0x00, 0x00, 0xFD, 0x1F, 0x00, 0xFF}, // 8, 4C keep alive / prevent error , 0x2616CFC
 	{0x01, 0x0F, 0xF7, 0xFA, 0x00, 0x00, 0x00, 0xC0}, // 9, Car Config default , 0x1017FFC
 	{0x11, 0xDE, 0x53, 0x00, 0x24, 0x00, 0x10, 0x00}, // 10 Gear Postion , 0x3200408
-	{0x00, 0x00, 0x00, 0x00, 0x1D, 0xE0, 0x00, 0x00}, // 11 Trailer Attatched , 0x3E0004A
 	{0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x35}, // 12 Dim Message Window , 0x02A0240E
 	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}  // 13 Dim Message Content , 0x1800008
 };
 
 // Sets the data for what the car is equiped with.
-// Taken from a 2007 M66 SR with Climate package, rear parking sensors, no nav.
+//original code and some parts taken from 2004 d5 diesel volvo with automatic trasnmission
+//originla code is from manual car so then the gear text wont work
+
 unsigned char carConfigData[16][8] = {
-	{0x10, 0x10, 0x01, 0x03, 0x02, 0x01, 0x00, 0x01},
+	{0x10, 0x30, 0x01, 0x02, 0x01, 0x03, 0x00, 0x02}, // modified default config data to from mnaual to automatic gearbox gear screen works now
+
+
+	//original code
 	{0x11, 0x18, 0x05, 0x05, 0x02, 0x03, 0x01, 0x05},
 	{0x12, 0x03, 0x02, 0x02, 0x01, 0x02, 0x05, 0x01},
 	{0x13, 0x01, 0x01, 0x01, 0x02, 0x02, 0x01, 0x04},
@@ -90,6 +110,13 @@ void VolvoDIM::sendMsgWrapper(unsigned long wId, unsigned char *wBuf)
 {
 	CAN.sendMsgBuf(wId, 1, 8, wBuf);
 }
+
+
+
+
+
+
+
 
 
 void VolvoDIM::initSRS()
@@ -270,13 +297,19 @@ void VolvoDIM::simulate()
 		genTemp(address, stmp);
 		break;
 	case addrLi[arrConfig]:
-		if (carConCnt % 12 == 1)
+		carConCnt++;
+		if (carConCnt >= 50) 
 		{
-			memcpy(stmp, carConfigData[configCnt], sizeof(stmp));
-			configCnt++;
+			// Burst send all 16 lines of configuration sequentially
+			for (int i = 0; i < 16; i++) {
+				sendMsgWrapper(address, carConfigData[i]);
+				delay(2); // Give the cluster 2ms to process each line
+			}
+			carConCnt = 0;
 		}
 		else
 		{
+			// Send the normal 0x01 heartbeat
 			genCC(address, stmp);
 		}
 		break;
@@ -290,6 +323,7 @@ void VolvoDIM::simulate()
 		if(customMessageCnt < 5){
 			genCustomText(customTextMessage);
 		}
+
 	case addrLi[arrSpeed]:
 		genMileageAndSpeed();
 
@@ -310,7 +344,6 @@ void VolvoDIM::simulate()
 	if (cnt == listLen)
 	{
 		cnt = 0;
-		carConCnt = (configCnt >= 16) ? 0 : carConCnt + 1;
 	}
 
 	if (blinkerInterval >= 50)
@@ -611,6 +644,24 @@ void VolvoDIM::enableBrake(int enabled)
     defaultData[arrBrakes][3] = 0x60;
 }
 
+
+void VolvoDIM::enableParkingBrake(int enabled) {
+  if (enabled == 1)
+    digitalWrite(_parkingBrakePin, HIGH);
+  else
+    digitalWrite(_parkingBrakePin, LOW);
+}
+
+
+void VolvoDIM::enableEngineLight(int enabled) {
+  if (enabled == 1)
+    digitalWrite(_engineLightPin, HIGH);
+  else
+    digitalWrite(_engineLightPin, LOW);
+}
+
+
+
 void VolvoDIM::setGearPosText(const char *gear)
 {
 	if (gear == 'low' || gear == 'Low' || gear == 'l' || gear == 'L')
@@ -731,20 +782,6 @@ void VolvoDIM::setGearPosInt(int gear)
 		break; // 6th Gear
 	}
 }
-void VolvoDIM::enableTrailer(int enabled)
-{
-	if (enabled == 1)
-	{
-		defaultData[arrTrailer][4] = (char)0x11;
-		defaultData[arrTrailer][5] = (char)0xE4;
-	}
-	else
-	{
-		defaultData[arrTrailer][4] = (char)0x1D;
-		defaultData[arrTrailer][5] = (char)0xE0;
-	}
-}
-
 
 
 

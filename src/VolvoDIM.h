@@ -15,7 +15,7 @@
 class VolvoDIM
 {
     public:
-        VolvoDIM(int SPI_CS_PIN, int relayPin=0);
+        VolvoDIM(int SPI_CS_PIN, int relayPin=0, int parkingBrakePin=0, int engineLightPin=0);
         void setTime(int inputTime);
         int clockToDecimal(int hour, int minute); 
         double celsToFahr(double temp);
@@ -27,7 +27,6 @@ class VolvoDIM
         void setTotalBrightness(int value);
         void setGearPosText(const char* gear);
         void setGearPosInt(int gear);
-        void enableTrailer(int enabled);
         void setCustomText(const char* text);
         void init();
         void simulate();
@@ -50,6 +49,8 @@ class VolvoDIM
         void enableBattery(int enabled);
         void enableFlashingTC(int enabled);
         void enableFlashingABS(int enabled);
+        void enableParkingBrake(int enabled);
+        void enableEngineLight(int enabled);
     private:
         void sendMsgWrapper(unsigned long wId, unsigned char* wBuf);
         void initSRS();
