@@ -790,7 +790,7 @@ void VolvoDIM::setGearPosInt(int gear)
 }
 
 // uptightsuperlabs - 4/10/2026 safety: copy string into our own persistent buffer (custom_text), this solves the dangling poiner issue entirely
-void VoldoDIM::setCustomText(const char *text) {
+void VolvoDIM::setCustomText(const char *text) {
     if (text == nullptr) {
         return;
     }
