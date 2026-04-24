@@ -802,12 +802,18 @@ void VolvoDIM::setCustomText(const char *text) {
     customTextChanged = 1;
 }
 
+// uptightsuperlabs - 4/24/2026 i swear if arduino doesn't support constexpr ima freak
+constexpr unsigned char clearFrame[] = { 0xE1, 0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
 void VolvoDIM::genCustomText() {
-	// uptightsuperlabs - 4/24/2026 idk wtf i was doing i forgot, so im gonna implement this a different way.
+	sendMsgWrapper(addrLi[arrDmWindow], clearFrame);
+	delay(5);
+
 	unsigned char header[8];
-	memcpy(stmp, defaultData[arrDmWindow], sizeof(stmp));
-	stmp[7] = 0x31;
-	sendMsgWrapper(addrLi[arrDmWindow], header);
+	memcpy(header, defaultData[arrDmWindow], 8);
+	header[7] = 0x31;
+	sendMsgWrapper(addrLi[arrDmWindpw], header);
+	delay(2);
 
 	for (int i = 0; i < 4; i++) {
 		unsigned char chunk[8];
@@ -828,7 +834,7 @@ void VolvoDIM::genCustomText() {
 
 		// uptightsuperlabs - 4/24/2026 typos typos typos
 		sendMsgWrapper(addrLi[arrDmMessage], chunk);
-		delayMicroseconds(500); // uptightsuperlabs - 4/24/2026 https://docs.arduino.cc/language-reference/en/functions/time/delayMicroseconds/
+		delay(3);
 	}
 
 	customMessageCnt++;
