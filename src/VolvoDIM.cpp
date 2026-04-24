@@ -826,8 +826,9 @@ void VolvoDIM::genCustomText() {
 			}
 		}
 
-		send sendMsgWrapper(addrLi[arrDmMessage], chunk);
-		delayMicrosecods(500); // uptightsuperlabs - 4/24/2026 https://docs.arduino.cc/language-reference/en/functions/time/delayMicroseconds/
+		// uptightsuperlabs - 4/24/2026 typos typos typos
+		sendMsgWrapper(addrLi[arrDmMessage], chunk);
+		delayMicroseconds(500); // uptightsuperlabs - 4/24/2026 https://docs.arduino.cc/language-reference/en/functions/time/delayMicroseconds/
 	}
 
 	customMessageCnt++;
@@ -836,7 +837,6 @@ void VolvoDIM::genCustomText() {
 void VolvoDIM::enableMilageTracking(int on){
 	mileageEnabled = on;
 }
-
 
 void VolvoDIM::enableDisableDingNoise(int on){
 	memcpy(stmp, defaultData[arrTime], sizeof(stmp));
@@ -855,14 +855,13 @@ void VolvoDIM::clearCustomText()
 	sendMsgWrapper(addrLi[arrDmWindow], clearValues);
 }
 
-void VolvoDIM::gaugeReset()
-{
+void VolvoDIM::gaugeReset() {
 	powerOn();
 	delay(7000);
 	powerOff();
 }
-void VolvoDIM::sweepGauges()
-{
+
+void VolvoDIM::sweepGauges() {
     setRpm(8000);
     setSpeed(160); 
     delay(500);
@@ -871,22 +870,21 @@ void VolvoDIM::sweepGauges()
 }
 
 void VolvoDIM::setBlinker(int right, int left, int hazard) {
-  // Priority: hazard > right > left
-  if (hazard == 1 || (right == 1 && left == 1))
-    defaultData[arrBlinker][7] = 0x0E;
-  else if (right == 1)
-    defaultData[arrBlinker][7] = 0x0C;
-  else if (left == 1)
-    defaultData[arrBlinker][7] = 0x0A;
-  else
-    defaultData[arrBlinker][7] = 0x08;
-}
-void VolvoDIM::enableSerialErrorMessages()
-{
-	enableSerialErrMsg = true;
-}
-void VolvoDIM::disableSerialErrorMessages()
-{
-	enableSerialErrMsg = false;
+  	// Priority: hazard > right > left
+	if (hazard == 1 || (right == 1 && left == 1))
+    	defaultData[arrBlinker][7] = 0x0E;
+	else if (right == 1)
+    	defaultData[arrBlinker][7] = 0x0C;
+  	else if (left == 1)
+    	defaultData[arrBlinker][7] = 0x0A;
+  	else
+    	defaultData[arrBlinker][7] = 0x08;
 }
 
+void VolvoDIM::enableSerialErrorMessages() {
+	enableSerialErrMsg = true;
+}
+
+void VolvoDIM::disableSerialErrorMessages() {
+	enableSerialErrMsg = false;
+}
