@@ -796,20 +796,41 @@ void VolvoDIM::setCustomText(const char *text) {
     }
 
     strncpy(persistent_custom_text, text, 32);
-    custom_text[32] = '\0';
+    persistent_custom_text[32] = '\0';
 
     customMessageCnt = 0;
     customTextChanged = 1;
 }
 
 void VolvoDIM::genCustomText() {
-	// uptightsuperlabs - 4/10/2026 custom text is now used directly, doesn't need to be passed in
-	int msg_len = strlen(persistent_custom_text);
-	const int total_msg_len = 32;
-	const int chunk_size = 7;
-
+	// uptightsuperlabs - 4/24/2026 idk wtf i was doing i forgot, so im gonna implement this a different way.
+	unsigned char header[8];
 	memcpy(stmp, defaultData[arrDmWindow], sizeof(stmp));
 	stmp[7] = 0x31;
+	sendMsgWrapper(addrLi[arrDmWindow], header);
+
+	for (int i = 0; i < 4; i++) {
+		unsigned char chunk[8];
+
+		// uptightsuperlabs - 4/24/2026 as far as i can research 0x60 semes to be the sequence index for volvo dims?
+		chunk[0] = 0x60 + i;
+
+		// uptightsuperlabs - 4/24/2026 we can do some pretty gay pointer arithmetic here, it's faster than array indexing
+		char *source = &persistent_custom_text[i * 7];
+
+		for (int j = 1; j <= 7; j++) {
+			if ((i * 7 + (j - 1)) < 32) {
+				chunk[j] = source[j - 1];
+			} else {
+				chunk[j] = 0x20; // uptightsuperlabs - 4/24/2026 filling the space with 0x20 if the string is short
+			}
+		}
+
+		send sendMsgWrapper(addrLi[arrDmMessage], chunk);
+		delayMicrosecods(500); // uptightsuperlabs - 4/24/2026 https://docs.arduino.cc/language-reference/en/functions/time/delayMicroseconds/
+	}
+
+	customMessageCnt++;
 }
 
 void VolvoDIM::enableMilageTracking(int on){
