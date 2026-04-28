@@ -4,6 +4,7 @@
 
   Reworked by Mikael R, March 29, 2026.
 */
+
 #ifndef VolvoDIM_h
 #define VolvoDIM_h
 
@@ -12,6 +13,7 @@
 #include <SPI.h>
 #include <math.h>
 #include <time.h>
+
 class VolvoDIM
 {
     public:
@@ -58,8 +60,14 @@ class VolvoDIM
         void init4C();
         void genCC(long address, byte stmp[]);
         void genTemp(long address, byte stmp[]);
-        void genCustomText(const char* text);
+        void genCustomText();
         void clearCustomText();
         void genMileageAndSpeed();
+
+        // uptightsuperlabs - 4/10/2026 i'll work on fixing all of this up and you know, crap like that sooner or later...
+        //                              easily TONS of work to do. i like it. also this is 32 chars + 1 null term
+        char persistent_custom_text[33]; // also yes i had nothing better to name this, bite me.
+        int text_scroll_index = 0;
 };
+
 #endif

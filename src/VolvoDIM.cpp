@@ -36,7 +36,6 @@ bool enableSerialErrMsg = false;
 int genCnt = 0;
 int cnt = 0;
 constexpr int listLen = 13;
-char* customTextMessage = "";
 int startUpWait = 0;
 int customMessageCnt = 0, customTextChanged = 0;
 int mileageCounter = 0, mileagePace = 0, genSpeed = 0;
@@ -336,7 +335,7 @@ void VolvoDIM::simulate()
 		}
 	case addrLi[arrDmMessage]:
 		if(customMessageCnt < 5){
-			genCustomText(customTextMessage);
+			genCustomText();
 		}
 
 	case addrLi[arrSpeed]:
@@ -790,64 +789,74 @@ void VolvoDIM::setGearPosInt(int gear)
 	}
 }
 
-void VolvoDIM::setCustomText(const char* text) {
-	customTextMessage = text;
-	customMessageCnt = 0;
-	customTextChanged = 1;
+// uptightsuperlabs - 4/10/2026 safety: copy string into our own persistent buffer (custom_text), this solves the dangling poiner issue entirely
+void VolvoDIM::setCustomText(const char *text) {
+    if (text == nullptr) {
+        return;
+    }
+
+    strncpy(persistent_custom_text, text, 32);
+    persistent_custom_text[32] = '\0';
+
+    customMessageCnt = 0;
+    customTextChanged = 1;
 }
-void VolvoDIM::genCustomText(const char* text) {
-	if(customTextChanged > 0){
-		//hard reset text window
-		text = "                               ";
-		customTextChanged = 0;
+
+void VolvoDIM::genCustomText() {
+	if (persistent_custom_text[0] == '\0' || persistent_custom_text[0] == ' ') {
+		clearCustomText(); // uptightsuperlabs - 4/8/2026 whoops didn't know these existed
+		customMessageCnt = 5;
+		return;
 	}
+
+	if (customMessageCnt == 0) {
+		clearCustomText();
+		delay(10);
+
+		unsigned char header[8];
+		memcpy(header, defaultData[arrDmWindow], 8);
+		header[7] = 0x31;
+		sendMsgWrapper(addrLi[arrDmWindow], header);
+		delay(20); // uptightsuperlabs - 4/28/2026 even higher delay.
+	}
+
+	unsigned char frame[8];
+	frame[0] = 0xA7;
+	frame[1] = 0x00;
+
+	memcpy(&frame[2], &persistent_custom_text[0], 6);
+	sendMsgWrapper(addrLi[arrDmMessage], frame);
+	delay(10);
+
+	// uptightsuperlabs - 4/28/2026 made readable + got my head out of my ass.
+	// 								isotp style transport is used rather than sqeuential/static broadcasting...
+	// 								whoops
+	//								i should have been more careful and actually went through the code.																																								
+
+	int text_idx = 6;
+	for (int frame_idx = 0x21; frame_idx <= 0x24; frame_idx++) {
+		unsigned char chunk[8];
+		chunk[0] = frame_idx;
+
+		for (int j = 1; j <= 7; j++) {
+			if (text_idx < 32) {
+				chunk[j] = persistent_custom_text[text_idx++];
+			} else {
+				chunk[j] = 0x20; // uptightsuperlabs - 4/24/2026 filling the space with 0x20 if the string is short
+			}
+		}
+
+		// uptightsuperlabs - 4/24/2026 typos typos typos
+		sendMsgWrapper(addrLi[arrDmMessage], chunk);
+		delay(15);
+	}
+
 	customMessageCnt++;
-	if(customMessageCnt > 50){
-		customMessageCnt = 0;
-	}
-    int messageLen = strlen(text);
-    const int totalMessageLength = 32;
-    const int chunkSize = 7;
-
-	if (messageLen > totalMessageLength) {
-        messageLen = totalMessageLength;
-    }
-
-    memcpy(stmp, defaultData[arrDmWindow], sizeof(stmp));
-    defaultData[arrDmWindow][7] = 0x31;
-    sendMsgWrapper(addrLi[arrDmWindow], stmp);
-    delay(40);
-    clearCustomText();
-
-	//force the message into fixed length array
-    char message[totalMessageLength] = {0};
-    strncpy(message, text, messageLen);
-
-    // Send the first part of the message
-    stmp[0] = 0xA7;
-    stmp[1] = 0x00;
-    memcpy(&stmp[2], message, chunkSize - 1);
-    sendMsgWrapper(addrLi[arrDmMessage], stmp);
-    delay(40);
-
-    // Send the remaining parts of the message
-    for (int i = chunkSize - 1, messageSendIndex = 0x21; i < totalMessageLength; i += chunkSize, ++messageSendIndex) {
-        stmp[0] = messageSendIndex;
-        memcpy(&stmp[1], &message[i], chunkSize);
-        sendMsgWrapper(addrLi[arrDmMessage], stmp);
-        delay(40);
-    }
-
-    // End of sending
-    stmp[0] = 0x65;
-    memset(&stmp[1], ' ', chunkSize);
-    sendMsgWrapper(addrLi[arrDmMessage], stmp);
 }
 
 void VolvoDIM::enableMilageTracking(int on){
 	mileageEnabled = on;
 }
-
 
 void VolvoDIM::enableDisableDingNoise(int on){
 	memcpy(stmp, defaultData[arrTime], sizeof(stmp));
@@ -866,14 +875,13 @@ void VolvoDIM::clearCustomText()
 	sendMsgWrapper(addrLi[arrDmWindow], clearValues);
 }
 
-void VolvoDIM::gaugeReset()
-{
+void VolvoDIM::gaugeReset() {
 	powerOn();
 	delay(7000);
 	powerOff();
 }
-void VolvoDIM::sweepGauges()
-{
+
+void VolvoDIM::sweepGauges() {
     setRpm(8000);
     setSpeed(160); 
     delay(500);
@@ -882,22 +890,21 @@ void VolvoDIM::sweepGauges()
 }
 
 void VolvoDIM::setBlinker(int right, int left, int hazard) {
-  // Priority: hazard > right > left
-  if (hazard == 1 || (right == 1 && left == 1))
-    defaultData[arrBlinker][7] = 0x0E;
-  else if (right == 1)
-    defaultData[arrBlinker][7] = 0x0C;
-  else if (left == 1)
-    defaultData[arrBlinker][7] = 0x0A;
-  else
-    defaultData[arrBlinker][7] = 0x08;
-}
-void VolvoDIM::enableSerialErrorMessages()
-{
-	enableSerialErrMsg = true;
-}
-void VolvoDIM::disableSerialErrorMessages()
-{
-	enableSerialErrMsg = false;
+  	// Priority: hazard > right > left
+	if (hazard == 1 || (right == 1 && left == 1))
+    	defaultData[arrBlinker][7] = 0x0E;
+	else if (right == 1)
+    	defaultData[arrBlinker][7] = 0x0C;
+  	else if (left == 1)
+    	defaultData[arrBlinker][7] = 0x0A;
+  	else
+    	defaultData[arrBlinker][7] = 0x08;
 }
 
+void VolvoDIM::enableSerialErrorMessages() {
+	enableSerialErrMsg = true;
+}
+
+void VolvoDIM::disableSerialErrorMessages() {
+	enableSerialErrMsg = false;
+}
